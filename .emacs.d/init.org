@@ -1,0 +1,919 @@
+# -*- mode: org -*-
+#+TITLE: Emacs init.el File using Orgmode
+#+AUTHOR: Pedro Bruel
+#+EMAIL: pedro.bruel@gmail.com
+#+EXPORT_EXCLUDE_TAGS: noexport
+#+STARTUP: fold indent logdrawer
+#+LANGUAGE: en
+
+* Packages
+** Archives
+- Getting latest MELPA packages, but not using stable versions since
+  many packages won't appear.
+- Getting latest org version:
+
+#+begin_SRC emacs-lisp :tangle init.el
+(require 'package)
+
+(setq package-archives '(("org" . "https://orgmode.org/elpa/")
+                         ("melpa" . "https://melpa.org/packages/")
+                         ("gnu" . "https://elpa.gnu.org/packages/")))
+
+(package-initialize)
+
+(unless package-archive-contents
+  (package-refresh-contents))
+#+end_SRC
+
+** Git Packages
+*** Creating lisp directory
+#+begin_SRC emacs-lisp :tangle init.el
+(unless (file-directory-p "~/.emacs.d/lisp/")
+  (make-directory "~/.emacs.d/lisp"))
+#+end_SRC
+
+*** org-mode from git
+This clones org-mode =release_9.4.5= and loads it locally.
+
+#+begin_SRC emacs-lisp :tangle init.el
+(unless (file-directory-p "~/.emacs.d/lisp/org-mode")
+    (shell-command (concat "cd ~/.emacs.d/lisp && "
+                           "git clone "
+                           "--branch release_9.4.5 "
+                           "https://code.orgmode.org/bzg/org-mode.git && "
+                           "cd org-mode && make all")))
+
+(let ((default-directory  "~/.emacs.d/lisp/"))
+  (setq load-path
+        (append
+         (let ((load-path (copy-sequence load-path)))
+           (normal-top-level-add-to-load-path '("org-mode/lisp"
+                                                "org-mode/contrib/lisp")))
+         load-path)))
+
+#+end_SRC
+*** ob-julia from git
+Getting ob-julia:
+#+begin_SRC emacs-lisp :tangle init.el
+(unless (file-directory-p "~/.emacs.d/lisp/ob-julia")
+    (shell-command (concat "cd ~/.emacs.d/lisp && "
+                           "git clone "
+                           "--branch v0.0.1 "
+                           "https://github.com/phrb/ob-julia.git && "
+                           "cd ob-julia && make all")))
+
+(if (file-directory-p "~/.emacs.d/lisp/ob-julia")
+    (let ((default-directory  "~/.emacs.d/lisp/"))
+      (setq load-path
+            (append
+             (let ((load-path (copy-sequence load-path)))
+               (normal-top-level-add-to-load-path '("ob-julia")))
+             load-path))))
+#+end_SRC
+
+*** org-bullets
+Getting org-bullets:
+#+begin_SRC emacs-lisp :tangle init.el
+(if (file-directory-p "~/.emacs.d/lisp/org-bullets")
+    (let ((default-directory  "~/.emacs.d/lisp/"))
+      (setq load-path
+            (append
+             (let ((load-path (copy-sequence load-path)))
+               (normal-top-level-add-to-load-path '("org-bullets")))
+             load-path))))
+#+end_SRC
+*** Local org2jekyll
+Getting org2jekyll:
+#+begin_SRC emacs-lisp :tangle init.el
+(if (file-directory-p "~/.emacs.d/lisp/org2jekyll")
+    (let ((default-directory  "~/.emacs.d/lisp/"))
+      (setq load-path
+            (append
+             (let ((load-path (copy-sequence load-path)))
+               (normal-top-level-add-to-load-path '("org2jekyll")))
+             load-path))))
+#+end_SRC
+*** Local ob-jl
+This is an attempt to rewrite ob-julia from scratch.
+#+begin_SRC emacs-lisp :tangle no
+(if (file-directory-p "~/.emacs.d/lisp/ob-jl")
+    (let ((default-directory  "~/.emacs.d/lisp/"))
+      (setq load-path
+            (append
+             (let ((load-path (copy-sequence load-path)))
+               (normal-top-level-add-to-load-path '("ob-jl")))
+             load-path))))
+#+end_SRC
+*** Refresh Packages
+#+begin_SRC emacs-lisp :tangle init.el
+(unless package-archive-contents
+  (package-refresh-contents))
+#+end_SRC
+** Ensure Installed
+#+begin_SRC emacs-lisp :tangle init.el
+(setq pkg-deps '(graphviz-dot-mode
+                 ebib
+                 magit
+                 cuda-mode
+                 doom-modeline
+                 doom-themes
+                 all-the-icons
+                 rust-mode
+                 dockerfile-mode
+                 lua-mode
+                 ace-window
+                 jupyter
+                 yaml-mode
+                 markdown-mode
+                 aggressive-indent
+                 counsel
+                 ess
+                 swiper
+                 kv
+                 which-key
+                 s
+                 powerline
+                 julia-mode
+                 ivy
+                 evil
+                 deferred
+                 dash-functional
+                 base16-theme))
+
+(dolist (pkg pkg-deps)
+  (unless (package-installed-p pkg)
+    (package-install pkg)))
+#+end_SRC
+* Function
+** Saving Session & History
+Enables saving command history and Emacs buffer list:
+
+#+begin_SRC emacs-lisp :tangle init.el
+(savehist-mode 1)
+(desktop-save-mode 1)
+
+(setq-default desktop-save t)
+(setq-default desktop-auto-save-timeout 10)
+#+end_SRC
+
+** Encoding
+#+begin_SRC emacs-lisp :tangle init.el
+(setq-default buffer-file-coding-system 'utf-8-unix)
+(setq locale-coding-system 'utf-8)
+(set-terminal-coding-system 'utf-8-unix)
+(set-keyboard-coding-system 'utf-8)
+(set-selection-coding-system 'utf-8)
+(prefer-coding-system 'utf-8)
+(autoload 'ansi-color-for-comint-mode-on "ansi-color" nil t)
+(add-hook 'shell-mode-hook 'ansi-color-for-comint-mode-on)
+#+end_SRC
+
+** Tabs as Spaces
+#+begin_SRC emacs-lisp :tangle init.el
+(setq-default indent-tabs-mode nil)
+#+end_SRC
+
+** File Position
+Rememeber position in files, except unreadable ones:
+#+begin_SRC emacs-lisp :tangle init.el
+(save-place-mode 1)
+(setq save-place-forget-unreadable-files nil)
+#+end_SRC
+** Update Changed Files
+Emacs gets notified by changed files and updates buffers automatically:
+#+begin_SRC emacs-lisp :tangle init.el
+(global-auto-revert-mode t)
+#+end_SRC
+** Backups
+Create backup and autosave directories if none exist:
+
+#+begin_SRC emacs-lisp :tangle init.el
+(defvar backup-directory (concat user-emacs-directory "backups/"))
+(defvar autosave-directory (concat user-emacs-directory "autosave/"))
+
+(if (not (file-exists-p backup-directory)) (make-directory backup-directory t))
+(if (not (file-exists-p autosave-directory)) (make-directory autosave-directory t))
+
+(setq backup-directory-alist `((".*" . ,backup-directory)))
+(setq auto-save-file-name-transforms `((".*" ,autosave-directory t)))
+#+end_SRC
+
+Configure backups and autosave:
+
+#+begin_SRC emacs-lisp :tangle init.el
+(setq make-backup-files t)
+(setq auto-save-default t)
+(setq auto-save-timeout 45)
+#+end_SRC
+
+Do not create lockfiles:
+
+#+begin_SRC emacs-lisp :tangle init.el
+(setq create-lockfiles nil)
+#+end_SRC
+
+Auto save based on keystrokes:
+
+#+begin_SRC emacs-lisp :tangle init.el
+(setq auto-save-interval 300)
+#+end_SRC
+** Custom Configuration File
+Options chosen with the customize UI live here:
+
+#+begin_src emacs-lisp :tangle init.el
+(setq custom-file "~/.emacs.d/emacs-custom.el")
+(load custom-file)
+#+end_src
+** Default Programs
+#+begin_SRC emacs-lisp :tangle init.el
+(setq browse-url-browser-function 'browse-url-generic)
+(setq browse-url-generic-program "firefox")
+#+end_SRC
+** Paragraph Fill
+#+begin_SRC emacs-lisp :tangle init.el
+(setq-default fill-column 80)
+#+end_SRC
+** Hide/Show
+Turns  on  hide/show minor  mode  for  all  programming modes.   Check  commands
+[[https://www.emacswiki.org/emacs/HideShow][here]].
+#+begin_SRC emacs-lisp :tangle init.el
+(add-hook 'prog-mode-hook #'hs-minor-mode)
+#+End_SRC
+** Yes-or-no
+#+begin_SRC emacs-lisp :tangle init.el
+(defalias 'yes-or-no-p 'y-or-n-p)
+#+end_SRC
+** CUDA Mode
+#+begin_SRC emacs-lisp :tangle init.el
+(add-to-list 'auto-mode-alist '("\.cu$" . c++-mode))
+#+end_SRC
+* Aesthetics
+** Screen
+*** Splashscreen
+#+begin_SRC emacs-lisp :tangle init.el
+(setq inhibit-splash-screen t)
+#+end_SRC
+** Window Splits
+Prefer splitting vertically:
+#+begin_SRC emacs-lisp :tangle no
+(setq split-height-threshold 20)
+(setq split-width-threshold 60)
+#+end_SRC
+** Color Theme
+To use =base16= themes, install the =base16-theme= package and run:
+#+begin_SRC emacs-lisp :tangle init.el
+(require 'base16-theme)
+(load-theme 'base16-default-dark t)
+#+end_SRC
+** Toolbar, Menubar, Scrollbar & Fringe
+#+begin_SRC emacs-lisp :tangle init.el
+(menu-bar-mode -1)
+(toggle-scroll-bar -1)
+(tool-bar-mode -1)
+(set-fringe-mode 0)
+#+end_SRC
+** Font
+#+begin_SRC emacs-lisp :tangle init.el
+(add-to-list 'default-frame-alist '(font . "Liberation Mono-13" ))
+(set-face-attribute 'default t :font "Liberation Mono-13" )
+#+end_SRC
+** Cursor
+For more configuration, such as color states, check Section [[Evil]].
+
+Stop blinking:
+#+begin_SRC emacs-lisp :tangle init.el
+(blink-cursor-mode 0)
+#+end_SRC
+** Scrolling
+Scroll one line at a time:
+#+begin_SRC emacs-lisp :tangle init.el
+(setq scroll-step 1)
+(setq scroll-conservatively  10000)
+(setq auto-window-vscroll nil)
+#+end_SRC
+** Whitespace
+Remove trailing whitespace before saving:
+#+begin_SRC emacs-lisp :tangle init.el
+(add-hook 'before-save-hook 'delete-trailing-whitespace)
+#+end_SRC
+** Parenthesis
+#+begin_SRC emacs-lisp :tangle init.el
+(show-paren-mode 1)
+#+end_SRC
+** Indentation
+Set C/C++ indentation levels:
+#+begin_SRC emacs-lisp :tangle init.el
+(setq-default c-default-style "linux"
+              c-basic-offset 4)
+#+end_SRC
+** Line Numbering
+Enable line numbering for all programming modes:
+#+begin_SRC emacs-lisp :tangle init.el
+(add-hook 'prog-mode-hook 'linum-mode)
+#+end_SRC
+** Powerline
+Enable powerline:
+#+begin_SRC emacs-lisp :tangle no
+(require 'powerline)
+(powerline-center-evil-theme)
+#+end_SRC
+** Doom Modeline
+#+begin_SRC emacs-lisp :tangle init.el
+(require 'doom-modeline)
+(doom-modeline-mode 1)
+(setq doom-modeline-height 1)
+(set-face-attribute 'mode-line nil :family "Liberation Mono" :height 110)
+(set-face-attribute 'mode-line-inactive nil :family "Liberation Mono" :height 110)
+#+end_SRC
+*** All the Icons
+#+begin_SRC emacs-lisp :tangle init.el
+(require 'all-the-icons)
+#+end_SRC
+** Doom Themes
+#+begin_SRC emacs-lisp :tangle no
+(use-package doom-themes
+             :config
+             ;; Global settings (defaults)
+             (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
+                   doom-themes-enable-italic t) ; if nil, italics is universally disabled
+             (load-theme 'doom-tomorrow-night t)
+
+             ;; Enable flashing mode-line on errors
+             (doom-themes-visual-bell-config)
+
+             ;; Corrects (and improves) org-mode's native fontification.
+             (doom-themes-org-config))
+#+end_SRC
+* Package Configuration
+** Evil
+#+BEGIN_SRC emacs-lisp :tangle init.el
+(require 'evil)
+(evil-mode 1)
+(setq evil-want-Y-yank-to-eol nil)
+#+END_SRC
+
+Set the cursor color based on evil state:
+
+#+begin_SRC emacs-lisp :tangle init.el
+(defvar my/base16-colors base16-default-dark-colors)
+(setq evil-emacs-state-cursor   `(,(plist-get my/base16-colors :base0D) box))
+(setq evil-insert-state-cursor  `(,(plist-get my/base16-colors :base0D) box))
+(setq evil-motion-state-cursor  `(,(plist-get my/base16-colors :base0E) box))
+(setq evil-normal-state-cursor  `(,(plist-get my/base16-colors :base0B) box))
+(setq evil-replace-state-cursor `(,(plist-get my/base16-colors :base08) box))
+(setq evil-visual-state-cursor  `(,(plist-get my/base16-colors :base09) box))
+#+end_SRC
+
+** Which-key
+Check   the  [[https://github.com/justbur/emacs-which-key][documentation]]   for
+further configuration.
+#+begin_SRC emacs-lisp :tangle init.el
+(require 'which-key)
+(which-key-mode)
+#+end_SRC
+** Ein (Emacs IPython Notebook)                                   :noexport:
+#+begin_SRC emacs-lisp
+(require 'ein)
+(require 'ein-notebook)
+#+end_SRC
+*** Support for IJulia, ESS...
+#+begin_SRC emacs-lisp
+(setq ein:polymode t)
+#+end_SRC
+
+** Org mode
+Load package:
+#+begin_src emacs-lisp :tangle init.el
+(require 'org)
+#+end_SRC
+
+*** Paths
+Always include relative paths in file links:
+
+#+begin_SRC emacs-lisp :tangle init.el
+(setq org-link-file-path-type 'relative)
+#+end_SRC
+*** Inline Images
+Don't show inline images, re-show images after running code:
+#+begin_SRC emacs-lisp :tangle init.el
+(add-hook 'org-mode-hook 'org-display-inline-images)
+(add-hook 'org-babel-after-execute-hook 'org-display-inline-images)
+(setq org-startup-with-inline-images nil)
+;; (setq org-image-actual-width nil)
+#+end_SRC
+
+*** Visual
+Hide formatting marks (*,=,/,...):
+#+begin_SRC emacs-lisp :tangle init.el
+;; (setq org-hide-emphasis-markers t)
+(setq org-hide-emphasis-markers nil)
+#+end_SRC
+
+Don't hide link markers ("[", "]"):
+#+begin_SRC emacs-lisp :tangle init.el
+(setq org-descriptive-links nil)
+#+end_SRC
+
+Show parsed "latex" symbols, such as "\ theta" (\theta):
+#+begin_SRC emacs-lisp :tangle init.el
+;; (setq org-pretty-entities t)
+(setq org-pretty-entities nil)
+#+end_SRC
+
+HTML exports use css:
+#+begin_SRC emacs-lisp :tangle init.el
+(setq org-html-htmlize-output-type (quote css))
+#+end_SRC
+
+Control separator lines between subtrees:
+#+begin_SRC emacs-lisp :tangle init.el
+(setq org-cycle-separator-lines 0)
+#+end_SRC
+
+*** Capture
+Setting up directory for notes:
+#+begin_SRC emacs-lisp :tangle init.el
+(setq org-directory "~/org")
+(setq org-default-notes-file (concat org-directory "/notes.org"))
+#+end_SRC
+
+Binding org-capture globally:
+#+begin_SRC emacs-lisp :tangle init.el
+(global-set-key (kbd "C-c c") 'org-capture)
+#+end_SRC
+
+Some  templates for  agenda  tasks.   Note the  usage  of  /backquote/ to  allow
+/concat/ to be evaluated.
+
+#+begin_SRC emacs-lisp :tangle init.el
+(setq org-capture-templates
+      `(
+        ("p" "Personal task")
+        ("pp" "No deadline, no reminder" entry
+         (file+olp+datetree ,(concat org-directory "/tasks/tasks.org") "Personal")
+         ,(concat "* TODO %? :personal:"
+                  "\n:PROPERTIES:"
+                  "\n:CAPTURED: %U"
+                  "\n:END:\n%i\n")
+         :tree-type day :jump-to-captured nil :empty-lines-after 1
+         :empty-lines-before 0 :unnarrowed nil)
+        ("pd" "With a deadline" entry
+         (file+olp+datetree ,(concat org-directory "/tasks/tasks.org") "Personal")
+         ,(concat "* TODO %? :personal:"
+                  "\nDEADLINE: %^{Task deadline}t"
+                  "\n:PROPERTIES:"
+                  "\n:CAPTURED: %U"
+                  "\n:END:\n%i\n")
+         :tree-type day :jump-to-captured nil :empty-lines-after 1
+         :empty-lines-before 0 :unnarrowed nil)
+        ("pt" "No deadline, with reminder" entry
+         (file+olp+datetree ,(concat org-directory "/tasks/tasks.org") "Personal")
+         ,(concat "* TODO %? :personal:"
+                  "\n%^{Remind me on}t"
+                  "\n:PROPERTIES:"
+                  "\n:CAPTURED: %U"
+                  "\n:END:\n%i\n")
+         :tree-type day :jump-to-captured nil :empty-lines-after 1
+         :empty-lines-before 0 :unnarrowed nil)
+        ("w" "Work task")
+        ("ww" "No deadline, no reminder" entry
+         (file+olp+datetree ,(concat org-directory "/tasks/tasks.org") "Work")
+         ,(concat "* TODO %? :work:"
+                  "\n:PROPERTIES:"
+                  "\n:CAPTURED: %U"
+                  "\n:END:\n%i\n")
+         :tree-type day :jump-to-captured nil :empty-lines-after 1
+         :empty-lines-before 0 :unnarrowed nil)
+        ("wd" "With a deadline" entry
+         (file+olp+datetree ,(concat org-directory "/tasks/tasks.org") "Work")
+         ,(concat "* TODO %? :work:"
+                  "\nDEADLINE: %^{Task deadline}t"
+                  "\n:PROPERTIES:"
+                  "\n:CAPTURED: %U"
+                  "\n:END:\n%i\n")
+         :tree-type day :jump-to-captured nil :empty-lines-after 1
+         :empty-lines-before 0 :unnarrowed nil)
+        ("wt" "No deadline, with reminder" entry
+         (file+olp+datetree ,(concat org-directory "/tasks/tasks.org") "Work")
+         ,(concat "* TODO %? :work:"
+                  "\n%^{Remind me on}t"
+                  "\n:PROPERTIES:"
+                  "\n:CAPTURED: %U"
+                  "\n:END:\n%i\n")
+         :tree-type day :jump-to-captured nil :empty-lines-after 1
+         :empty-lines-before 0 :unnarrowed nil)
+        ("e" "Enough item" entry
+         (file+olp+datetree ,(concat org-directory "/tasks/tasks.org") "Enough")
+         ,(concat "* TODO %? :enough:"
+                  "\nSCHEDULED: %^{Schedule task to}t"
+                  "\n:PROPERTIES:"
+                  "\n:CAPTURED: %U"
+                  "\n:END:\n%i\n")
+         :tree-type day :jump-to-captured nil :empty-lines-after 1
+         :empty-lines-before 0 :unnarrowed nil)
+        ("j" "Journal entry")
+        ("jj" "General journal entry" entry
+         (file+olp+datetree ,(concat org-directory "/journal/journal.org"))
+         ,(concat "* %? %^G"
+                  "\n:PROPERTIES:"
+                  "\n:CAPTURED: %U"
+                  "\n:END:\n%i\n")
+         :jump-to-captured t :empty-lines-after 1
+         :empty-lines-before 0 :unnarrowed nil)
+        ("jl" "Lux linux journal entry" entry
+         (file+olp+datetree ,(concat org-directory "/luxlinux/journal.org") "Journal")
+         ,(concat "* %? %^G"
+                  "\n:PROPERTIES:"
+                  "\n:CAPTURED: %U"
+                  "\n:END:\n%i\n")
+         :jump-to-captured t :empty-lines-after 1
+         :empty-lines-before 0 :unnarrowed nil)
+        ("m" "Meeting")
+        ("mm" "Record notes (general)" entry
+         (file+olp+datetree ,(concat org-directory "/journal/journal.org"))
+         ,(concat "* %? %^G:meeting:"
+                  "\n:PROPERTIES:"
+                  "\n:CAPTURED: %U"
+                  "\n:END:\n%i\n")
+         :jump-to-captured t :empty-lines-after 1
+         :empty-lines-before 0 :unnarrowed nil)
+        ("ma" "Make an appointment" entry
+         (file+olp+datetree ,(concat org-directory "/tasks/tasks.org") "Meetings")
+         ,(concat "* TODO %? %^G:meeting:"
+                  "\n%^{Schedule meeting to}t"
+                  "\n:PROPERTIES:"
+                  "\n:CAPTURED: %U"
+                  "\n:END:\n%i\n")
+         :jump-to-captured nil :empty-lines-after 1
+         :empty-lines-before 0 :unnarrowed nil)
+        ("ml" "Record Lux notes" entry
+         (file+olp+datetree ,(concat org-directory "/luxlinux/journal.org") "Meetings")
+         ,(concat "* %? %^G:meeting:"
+                  "\n:PROPERTIES:"
+                  "\n:CAPTURED: %U"
+                  "\n:END:\n%i\n")
+         :jump-to-captured t :empty-lines-after 1
+         :empty-lines-before 0 :unnarrowed nil)
+        ("t" "Teaching")
+        ("ta" "Make an appointment" entry
+         (file+olp+datetree ,(concat org-directory "/tasks/tasks.org") "Teaching")
+         ,(concat "* TODO %? %^G:teaching:"
+                  "\n%^{Schedule class to}t"
+                  "\n:PROPERTIES:"
+                  "\n:CAPTURED: %U"
+                  "\n:END:\n%i\n")
+         :jump-to-captured nil :empty-lines-after 1
+         :empty-lines-before 0 :unnarrowed nil)
+        ("tn" "Record notes" entry
+         (file+olp+datetree ,(concat org-directory "/journal/journal.org"))
+         ,(concat "* %? %^G:teaching:"
+                  "\n:PROPERTIES:"
+                  "\n:CAPTURED: %U"
+                  "\n:END:\n%i\n")
+         :jump-to-captured t :empty-lines-after 1
+         :empty-lines-before 0 :unnarrowed nil)
+        ("b" "Bibliographic entry")
+        ("bb" "Reference" entry
+         (file+olp+datetree ,(concat org-directory "/bibliography/bibliography.org")
+                            "References")
+         ,(concat "* %? %^G:bib:"
+                  "\n:PROPERTIES:"
+                  "\n:CAPTURED: %U"
+                  "\n:END:\n\n"
+                  "** Notes\n\n"
+                  "** Bibtex\n\n"
+                  "#+begin_src bibtex :tangle \"references.bib\"\n"
+                  "@article{}\n"
+                  "#+end_src\n%i\n")
+         :jump-to-captured nil :empty-lines-after 1
+         :empty-lines-before 0 :unnarrowed nil)
+        ("br" "Reading list" entry
+         (file+olp+datetree ,(concat org-directory "/bibliography/bibliography.org")
+                                     "References")
+         ,(concat "* TODO %? %^G:bib:"
+                  "\n:PROPERTIES:"
+                  "\n:CAPTURED: %U"
+                  "\n:END:\n\n"
+                  "** Notes\n\n"
+                  "** Bibtex\n\n"
+                  "#+begin_src bibtex :tangle \"references.bib\"\n"
+                  "@article{}\n"
+                  "#+end_src\n%i\n")
+         :jump-to-captured nil :empty-lines-after 1
+         :empty-lines-before 0 :unnarrowed nil)
+        ))
+#+end_SRC
+*** Agenda
+Set agenda files directory:
+#+begin_SRC emacs-lisp :tangle init.el
+(setq org-agenda-files (list "/home/phrb/org/tasks"
+                             "/home/phrb/org/journal"
+                             "/home/phrb/org/bibliography"))
+#+end_SRC
+
+Restore window setup after quitting agenda:
+#+begin_SRC emacs-lisp :tangle init.el
+(setq org-agenda-restore-windows-after-quit t)
+#+end_SRC
+
+Binding org-agenda globally:
+#+begin_SRC emacs-lisp :tangle init.el
+(global-set-key (kbd "C-c a") 'org-agenda)
+#+end_SRC
+**** Custom Commands
+#+begin_SRC emacs-lisp :tangle init.el
+(setq org-agenda-custom-commands
+      '(("w" "Agenda and work tasks"
+         ((agenda "")
+          (tags-todo "work")))
+        ("b" "Agenda, work, and bib tasks"
+         ((agenda "")
+          (tags-todo "work")
+          (tags-todo "bib")
+          (tags-todo "reading")))
+        ("p" "Agenda and personal tasks"
+         ((agenda "")
+          (tags-todo "personal")))))
+#+end_SRC
+*** Latex Exporting (ox-latex)
+**** Remove hyperref section
+#+begin_SRC emacs-lisp :tangle init.el
+(setq org-latex-with-hyperref nil)
+#+end_SRC
+**** Custom Classes
+#+begin_SRC emacs-lisp :tangle init.el
+(require 'ox-latex)
+
+;; Change for beamer
+;;(setq org-latex-pdf-process (list "latexmk -xelatex %f"))
+
+;; (setq org-latex-pdf-process (list "latexmk -pdflatex='pdflatex' -pdf -f %f"))
+(setq org-latex-pdf-process (list "latexmk -pdflatex='pdflatex -interaction nonstopmode -output-directory %o %f' -pdf -f %f -output-directory=%o"))
+(setq org-latex-default-packages-alist nil)
+(setq org-latex-packages-alist (quote (("" "booktabs" t))))
+
+(setq org-latex-listings t)
+(add-to-list 'org-latex-classes
+             '("org-elsarticle"
+               "\\documentclass{elsarticle}"
+               ("\\section{%s}" . "\\section*{%s}")
+               ("\\subsection{%s}" . "\\subsection*{%s}")
+               ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
+               ("\\paragraph{%s}" . "\\paragraph*{%s}")
+               ("\\subparagraph{%s}" . "\\subparagraph*{%s}")))
+(add-to-list 'org-latex-classes
+             '("org-ieeetran"
+               "\\documentclass{IEEEtran}"
+               ("\\section{%s}" . "\\section*{%s}")
+               ("\\subsection{%s}" . "\\subsection*{%s}")
+               ("\\subsubsection{%s}" . "\\subsubsection*{%s}")
+               ("\\paragraph{%s}" . "\\paragraph*{%s}")
+               ("\\subparagraph{%s}" . "\\subparagraph*{%s}")))
+(add-to-list 'org-latex-classes
+           '("partless-book"
+              "\\documentclass{book}"
+              ("\\chapter{%s}" . "\\chapter{%s}")
+              ("\\section{%s}" . "\\section*{%s}")
+              ("\\subsection{%s}" . "\\subsection*{%s}")
+              ("\\paragraph{%s}" . "\\paragraph*{%s}")
+              )
+)
+#+end_src
+**** Prefer User Header
+#+begin_SRC emacs-lisp :tangle init.el
+(setq org-latex-prefer-user-labels t)
+#+end_SRC
+**** Use Minted for Source Blocks
+#+begin_SRC emacs-lisp :tangle init.el
+(setq org-latex-listings 'minted)
+#+end_SRC
+*** Markdown Exporting (ox-md)
+#+begin_SRC emacs-lisp :tangle init.el
+(require 'ox-md)
+#+end_SRC
+*** ODT Exporting (ox-odt)
+#+begin_SRC emacs-lisp :tangle init.el
+(require 'ox-odt)
+#+end_SRC
+*** Source Blocks and Templates (org-tempo)
+#+begin_SRC emacs-lisp :tangle init.el
+(setq org-edit-src-auto-save-idle-delay 5)
+(setq org-edit-src-content-indentation 0)
+(setq org-src-fontify-natively t)
+(setq org-src-window-setup (quote other-window))
+(setq org-confirm-babel-evaluate nil)
+#+end_SRC
+
+**** Source Block Templates (org-tempo)
+#+begin_src emacs-lisp :tangle init.el
+(require 'org-tempo)
+
+(setq org-babel-default-header-args
+      '((:session . "none")
+	(:results . "output replace")
+	(:exports . "results")
+	(:cache . "no")
+	(:noweb . "yes")
+	(:hlines . "no")
+	(:tangle . "no")
+        (:eval . "no-export")
+	(:padnewline . "yes")))
+
+(setq org-babel-default-header-args:R
+      '((:session . "*R*")))
+
+(setq org-babel-default-header-args:bash
+      '((:session . "*Shell*")))
+
+(setq org-babel-default-header-args:python
+      '((:session . "*Python*")))
+
+(add-to-list 'org-structure-template-alist
+             '("eI" . "SRC emacs-lisp :tangle init.el"))
+(add-to-list 'org-structure-template-alist
+             '("Sh" . "SRC shell"))
+(add-to-list 'org-structure-template-alist
+             '("Sb" . "SRC bash"))
+(add-to-list 'org-structure-template-alist
+             '("b" . "SRC bibtex :tangle ./bib/references.bib"))
+(add-to-list 'org-structure-template-alist
+             '("j" . "SRC julia"))
+(add-to-list 'org-structure-template-alist
+             '("p" . "SRC python"))
+(add-to-list 'org-structure-template-alist
+             '("r" . "SRC R"))
+(add-to-list 'org-structure-template-alist
+             '("g" . "SRC R :results file graphics output :file \".pdf\" :width 10 :height 10 :eval no-export"))
+(add-to-list 'org-structure-template-alist
+             '("t" . "SRC latex :results output latex"))
+#+end_src
+
+*** Pretty Bullets (org-bullets)
+Was causing problems when loading large buffers, so I removed it.
+
+#+begin_src emacs-lisp :tangle init.el
+; (require 'org-bullets)
+; (add-hook 'org-mode-hook (lambda () (org-bullets-mode 1)))
+;
+; (setq org-bullets-bullet-list '("☯" "☢" "✜" "✚" "♠" "♣" "❀"))
+#+end_src
+*** Emacs Jupyter (ob-jupyter)
+#+begin_SRC emacs-lisp :tangle no
+(setq org-babel-default-header-args:jupyter-julia '((:async . "yes")
+                                                    (:session . "Julia")
+                                                    (:kernel . "julia-1.5")))
+
+(setq ob-async-no-async-languages-alist '("jupyter-python" "jupyter-julia"))
+#+end_SRC
+
+#+RESULTS:
+| jupyter-python | jupyter-julia |
+
+*** Babel Languages (org-babel)
+Setting Julia program:
+#+begin_SRC emacs-lisp :tangle no
+(setq inferior-julia-program-name "/usr/bin/julia")
+#+end_SRC
+
+Remove python completion:
+#+begin_SRC emacs-lisp :tangle init.el
+(setq python-shell-completion-native-enable nil)
+#+end_SRC
+
+Loading the following babel languages:
+#+begin_SRC emacs-lisp :tangle init.el
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ '(
+   (R . t)
+   (C . t)
+   (julia . t)
+   (python . t)
+   (emacs-lisp . t)
+   (shell . t)
+   (ruby . t)
+   (org . t)
+   (makefile . t)
+   (latex . t)
+   (jupyter . t)
+   ))
+#+end_SRC
+
+**** Overriding Julia Block
+#+begin_SRC emacs-lisp :tangle no
+(org-babel-jupyter-override-src-block "julia")
+#+end_SRC
+*** Expanding Linked Attachment Images (org-attach)
+#+BEGIN_SRC emacs-lisp :tangle init.el
+(require 'org-attach)
+(setq org-link-abbrev-alist '(("att" . org-attach-expand-link)))
+#+END_SRC
+*** Exporting to Jekyll (local org2jekyll)
+Using a local org2jekyll install for now, with this configuration:
+#+begin_SRC emacs-lisp :tangle init.el
+(require 'org2jekyll)
+
+(setq org2jekyll-blog-author       "phrb")
+(setq org2jekyll-source-directory  (expand-file-name "~/code/phrb.github.io/org"))
+(setq org2jekyll-jekyll-directory  (expand-file-name "~/code/phrb.github.io"))
+(setq org2jekyll-jekyll-drafts-dir "")
+(setq org2jekyll-jekyll-posts-dir  "_posts/")
+(setq org-publish-project-alist
+      `(("page"
+         :base-directory ,(org2jekyll-input-directory)
+         :base-extension "org"
+         ;; :publishing-directory "/ssh:user@host:~/html/notebook/"
+         :publishing-directory ,(org2jekyll-output-directory)
+         :publishing-function org-html-publish-to-html
+         :headline-levels 4
+         :section-numbers nil
+         :with-toc nil
+         :html-head "<link rel=\"stylesheet\" href=\"./css/style.css\" type=\"text/css\"/>"
+         :html-preamble t
+         :recursive t
+         :make-index t
+         :html-extension "html"
+         :body-only t)
+
+        ("post"
+         :base-directory ,(org2jekyll-input-directory)
+         :base-extension "org"
+         :publishing-directory ,(org2jekyll-output-directory org2jekyll-jekyll-posts-dir)
+         :publishing-function org-html-publish-to-html
+         :headline-levels 4
+         :section-numbers nil
+         :with-toc nil
+         :html-head "<link rel=\"stylesheet\" href=\"./css/style.css\" type=\"text/css\"/>"
+         :html-preamble t
+         :recursive t
+         :make-index t
+         :html-extension "html"
+         :body-only t)
+
+        ("images"
+         :base-directory ,(org2jekyll-input-directory "img")
+         :base-extension "jpg\\|gif\\|png"
+         :publishing-directory ,(org2jekyll-output-directory "img")
+         :publishing-function org-publish-attachment
+         :recursive t)
+
+        ("js"
+         :base-directory ,(org2jekyll-input-directory "js")
+         :base-extension "js"
+         :publishing-directory ,(org2jekyll-output-directory "js")
+         :publishing-function org-publish-attachment
+         :recursive t)
+
+        ("css"
+         :base-directory ,(org2jekyll-input-directory "css")
+         :base-extension "css\\|el"
+         :publishing-directory ,(org2jekyll-output-directory "css")
+         :publishing-function org-publish-attachment
+         :recursive t)
+
+        ("web" :components ("images" "js" "css"))
+        )
+      )
+#+end_SRC
+*** Adding the ignore tag
+#+begin_SRC emacs-lisp :tangle init.el
+(require 'ox-extra)
+(ox-extras-activate '(ignore-headlines))
+#+end_SRC
+** ESS (Emacs Speaks Statistics)
+Set R indentation level:
+#+begin_SRC emacs-lisp :tangle init.el
+(setq ess-indent-level 4)
+#+end_SRC
+** Ivy
+Loading package:
+#+begin_SRC emacs-lisp :tangle init.el
+(require 'ivy)
+(ivy-mode 1)
+#+end_SRC
+
+Defaults:
+#+begin_SRC emacs-lisp :tangle init.el
+(setq ivy-use-virtual-buffers t)
+(setq ivy-count-format "(%d/%d) ")
+
+(global-set-key (kbd "C-s") 'swiper)
+(global-set-key (kbd "M-x") 'counsel-M-x)
+(global-set-key (kbd "C-x C-f") 'counsel-find-file)
+#+end_SRC
+** Magit
+#+begin_SRC emacs-lisp :tangle init.el
+(require 'magit)
+(define-key global-map (kbd "C-c g") 'magit-status)
+#+end_SRC
+** Ebib
+#+begin_SRC emacs-lisp :tangle init.el
+(require 'ebib)
+
+(global-set-key (kbd "C-c e") 'ebib)
+
+(setq ebib-preload-bib-files '("~/cloud/papers/bibliography/references.bib"
+                               "~/org/journal/bib/references.bib"))
+
+(setq ebib-bibtex-dialect 'biblatex)
+#+end_SRC

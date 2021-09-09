@@ -1,0 +1,20 @@
+"firefox"
+    Mod4+c
+
+"qpdfview"
+    Mod4+v
+
+"spotify"
+    Mod4+s
+
+"xlock -usefirst -mode hop -cycles 10000 -echokeys -echokey \*"
+    Mod4+F12
+
+"systemctl suspend & xlock -usefirst -mode hop -cycles 10000 -echokeys -echokey \*"
+    Mod4+F7
+
+"emacs"
+    Mod4+e
+
+"xrandr --output eDP-1 --auto"
+    Mod4+d
